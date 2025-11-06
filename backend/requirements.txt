@@ -1,0 +1,6 @@
+fastapi==0.115.4
+uvicorn[standard]==0.30.6
+python-socketio==5.11.3
+aiofiles==24.1.0
+pydantic==2.9.2
+PyMySQL==1.1.1
