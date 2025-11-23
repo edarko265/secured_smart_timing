@@ -18,20 +18,16 @@ interface LiveStamp {
   deviceLabel: string
 }
 
-const REFRESH_MS = 2_000
+const REFRESH_MS = 1_000 // 1s polling feels more "live"
 
 function formatTime(d: Date) {
   return d.toLocaleTimeString("en-GB", { hour12: false })
 }
 
-// Safely format whatever the backend sends as a date/time
 function formatMaybeTime(raw: any): string {
   if (!raw) return "-"
   const d = new Date(raw)
-  if (isNaN(d.getTime())) {
-    // If it’s not a real Date, just show the raw string
-    return String(raw)
-  }
+  if (isNaN(d.getTime())) return String(raw)
   return formatTime(d)
 }
 
@@ -46,38 +42,52 @@ function App() {
   const [events, setEvents] = useState<any[]>([])
   const [nextIndex, setNextIndex] = useState<number>(0)
 
+  // -------- device refresh helper ------------------------------------------
+
+  const refreshDevices = useCallback(async () => {
+    try {
+      const devs = await fetchDevices()
+      // If backend includes offline devices, you can filter here:
+      // const online = devs.filter(d => d.status !== "offline")
+      setDevices(devs)
+    } catch (err) {
+      console.error("device refresh error", err)
+    }
+  }, [])
+
   // -------- polling devices -------------------------------------------------
 
   useEffect(() => {
-    let cancelled = false
+    let alive = true
 
-    async function poll() {
-      try {
-        const devs = await fetchDevices()
-        if (!cancelled) setDevices(devs)
-      } catch (err) {
-        console.error("device poll error", err)
-      } finally {
-        if (!cancelled) setTimeout(poll, REFRESH_MS)
-      }
+    const tick = async () => {
+      if (!alive) return
+      await refreshDevices()
     }
 
-    poll()
+    // immediate fetch + interval
+    tick()
+    const id = setInterval(tick, REFRESH_MS)
+
     return () => {
-      cancelled = true
+      alive = false
+      clearInterval(id)
     }
-  }, [])
+  }, [refreshDevices])
 
   // -------- event stream ----------------------------------------------------
 
   useEffect(() => {
     const ws = connectEventStream((newEvents) => {
-      // Log once so you can see the actual shape in the browser console
       console.debug("[WS] batch:", newEvents)
       setEvents((prev) => [...newEvents, ...prev].slice(0, 50))
+
+      // Every time we get events from the server, re-pull device list.
+      // This makes new/removed cones show up almost instantly.
+      refreshDevices()
     })
     return () => ws.close()
-  }, [])
+  }, [refreshDevices])
 
   // -------- saved runs initial load ----------------------------------------
 
@@ -116,14 +126,12 @@ function App() {
     function onKey(e: KeyboardEvent) {
       if (e.repeat) return
 
-      // digits 1–9 -> direct device index
       if (e.key >= "1" && e.key <= "9") {
         const idx = parseInt(e.key, 10) - 1
         performStamp(idx)
         return
       }
 
-      // Space -> sequential round-robin across connected devices
       if (e.key === " ") {
         e.preventDefault()
         const usable = Math.min(targetDevices, devices.length)
@@ -148,6 +156,8 @@ function App() {
       setLiveStamps([])
       setNextIndex(0)
       setSessionId((s) => s + 1)
+      // Refresh devices when switching mode as well
+      refreshDevices()
     } catch (err) {
       console.error("switchMode error", err)
     }
@@ -437,7 +447,6 @@ function App() {
                   </thead>
                   <tbody>
                     {savedRuns.map((r: any) => {
-                      // Be flexible with backend keys
                       const created =
                         r.created_at ?? r.created ?? r.time ?? r.timestamp ?? null
                       const mode = r.mode ?? r.system_mode ?? r.architecture ?? "-"
