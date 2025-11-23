@@ -1,6 +1,140 @@
-@tailwind base; @tailwind components; @tailwind utilities;
-body { @apply bg-neutral-900 text-neutral-100; }
-.card { @apply bg-neutral-800/70 rounded-2xl p-5 shadow; }
-.badge { @apply text-xs px-2 py-0.5 rounded-full; }
-.badge-green { @apply bg-green-700/30 text-green-300; }
-.badge-amber { @apply bg-amber-700/30 text-amber-300; }
+/* Tailwind entry points */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------
+   Global tokens / theme
+--------------------------------------------------*/
+@layer base {
+  :root{
+    --bg-color:       #0b1120;        /* page background */
+    --panel-color:    #0f172a;        /* panels/cards */
+    --card-color:     #0f172a;        /* alias for cards */
+    --line-color:     #1f2937;        /* borders / separators */
+    --muted:          #94a3b8;        /* secondary text */
+    --success:        #22c55e;
+    --warn:           #f59e0b;
+    --danger:         #ef4444;
+    --accent:         #3b82f6;        /* buttons / focus */
+    --glow:           0 0 0 2px rgba(59,130,246,.35);
+  }
+
+  /* Optional: Inter font (works online) */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  /* Page defaults */
+  body{
+    @apply bg-[color:var(--bg-color)] text-gray-100 min-h-screen font-inter antialiased;
+  }
+}
+
+/* -------------------------------------------------
+   Custom utilities (define BEFORE components if used in @apply)
+--------------------------------------------------*/
+@layer utilities {
+  /* fix for your error: custom radius */
+  .rounded-xl2 { border-radius: 1.25rem; } /* between xl(0.75rem) and 2xl(1rem) – pick your look */
+
+  /* font utility used in body via @apply */
+  .font-inter { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI,
+                Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+
+  /* subtle focus ring */
+  .focus-glow { box-shadow: var(--glow); }
+
+  /* soft panel shadow used around big cards */
+  .ring-glow { box-shadow: 0 0 120px rgba(34,197,94,.08) inset, 0 0 60px rgba(16,185,129,.06) inset; }
+}
+
+/* -------------------------------------------------
+   Components (use our custom utilities safely)
+--------------------------------------------------*/
+@layer components {
+  /* general card */
+  .card{
+    @apply rounded-xl2 bg-[color:var(--card-color)] border border-[color:var(--line-color)] p-6;
+  }
+
+  /* compact card */
+  .card-sm{
+    @apply rounded-xl2 bg-[color:var(--card-color)] border border-[color:var(--line-color)] p-4;
+  }
+
+  /* pill chips (status labels) */
+  .chip{
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm;
+    background: rgba(148,163,184,.08);
+    border: 1px solid rgba(148,163,184,.2);
+  }
+
+  .chip-success{
+    @apply chip text-emerald-300;
+    background: rgba(16,185,129,.08);
+    border-color: rgba(16,185,129,.25);
+  }
+
+  .chip-warn{
+    @apply chip text-amber-300;
+    background: rgba(245,158,11,.08);
+    border-color: rgba(245,158,11,.25);
+  }
+
+  .chip-danger{
+    @apply chip text-rose-300;
+    background: rgba(244,63,94,.08);
+    border-color: rgba(244,63,94,.25);
+  }
+
+  /* buttons */
+  .btn{
+    @apply inline-flex items-center justify-center rounded-xl2 px-4 py-2 text-sm font-semibold
+           border border-[color:var(--line-color)] bg-[color:var(--panel-color)]
+           hover:bg-[#0c1429] transition-colors;
+  }
+  .btn-primary{
+    @apply btn bg-[color:var(--accent)] text-white border-transparent hover:bg-blue-500 focus:outline-none;
+  }
+  .btn-ghost{
+    @apply btn bg-transparent hover:bg-[#0f172a];
+  }
+
+  /* section title */
+  .section-title{
+    @apply text-xl font-semibold text-gray-200;
+  }
+
+  /* device progress bar (green) */
+  .progress{
+    @apply h-2 w-full rounded-full bg-slate-700;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress > span{
+    @apply absolute left-0 top-0 h-full rounded-full bg-emerald-500;
+  }
+
+  /* big hero “All systems go” banner */
+  .hero{
+    @apply relative rounded-xl2 p-8 ring-glow border border-[color:var(--line-color)]
+           bg-gradient-to-b from-[#0f1a2f] to-[#0c1429];
+  }
+
+  /* terminal */
+  .terminal{
+    @apply card font-mono text-[13px] leading-6 bg-[#0c1426];
+  }
+
+  /* event log item */
+  .event{
+    @apply card-sm bg-[#0e1a2c];
+  }
+}
+
+/* -------------------------------------------------
+   Small helpers for the dashboard layout
+--------------------------------------------------*/
+.wrapper{
+  @apply max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8;
+}
+.subtitle{ @apply text-sm text-[color:var(--muted)]; }

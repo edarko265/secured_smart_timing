@@ -1,6 +1,6 @@
 import network, socket, time, json
 SSID="DNA-WIFI-7C58"; PASS="85801732190"
-PI_IP="192.168.1.173"; PORT=8080
+PI_IP="192.168.1.181"; PORT=8080
 CONE_ID="CONE_A"
 
 def wifi():
