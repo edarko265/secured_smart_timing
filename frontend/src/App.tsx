@@ -18,7 +18,8 @@ interface LiveStamp {
   deviceLabel: string
 }
 
-const REFRESH_MS = 1_000 // 1s polling feels more "live"
+const REFRESH_MS = 1_000 // how often we poll /api/devices
+const STALE_MS = 10_000  // how long before a device is considered "gone"
 
 function formatTime(d: Date) {
   return d.toLocaleTimeString("en-GB", { hour12: false })
@@ -29,6 +30,18 @@ function formatMaybeTime(raw: any): string {
   const d = new Date(raw)
   if (isNaN(d.getTime())) return String(raw)
   return formatTime(d)
+}
+
+// Decide if a device is still “fresh” based on last_seen
+function isFreshDevice(d: DeviceInfo): boolean {
+  if (d.last_seen == null) {
+    // if backend doesn't send last_seen, don't hide it
+    return true
+  }
+  let ms = d.last_seen
+  // if it's in seconds, convert to ms
+  if (ms < 1e12) ms = ms * 1000
+  return Date.now() - ms < STALE_MS
 }
 
 function App() {
@@ -47,8 +60,6 @@ function App() {
   const refreshDevices = useCallback(async () => {
     try {
       const devs = await fetchDevices()
-      // If backend includes offline devices, you can filter here:
-      // const online = devs.filter(d => d.status !== "offline")
       setDevices(devs)
     } catch (err) {
       console.error("device refresh error", err)
@@ -65,7 +76,6 @@ function App() {
       await refreshDevices()
     }
 
-    // immediate fetch + interval
     tick()
     const id = setInterval(tick, REFRESH_MS)
 
@@ -82,8 +92,7 @@ function App() {
       console.debug("[WS] batch:", newEvents)
       setEvents((prev) => [...newEvents, ...prev].slice(0, 50))
 
-      // Every time we get events from the server, re-pull device list.
-      // This makes new/removed cones show up almost instantly.
+      // Whenever we get events, refresh devices too
       refreshDevices()
     })
     return () => ws.close()
@@ -104,7 +113,8 @@ function App() {
 
   const performStamp = useCallback(
     (index: number) => {
-      const devList = devices.slice(0, targetDevices)
+      const freshDevices = devices.filter(isFreshDevice)
+      const devList = freshDevices.slice(0, targetDevices)
       if (!devList[index]) return
       const d = devList[index]
 
@@ -134,7 +144,8 @@ function App() {
 
       if (e.key === " ") {
         e.preventDefault()
-        const usable = Math.min(targetDevices, devices.length)
+        const freshDevices = devices.filter(isFreshDevice)
+        const usable = Math.min(targetDevices, freshDevices.length)
         if (usable === 0) return
         const idx = nextIndex % usable
         performStamp(idx)
@@ -144,7 +155,7 @@ function App() {
 
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [performStamp, devices.length, nextIndex, targetDevices])
+  }, [performStamp, devices, nextIndex, targetDevices])
 
   // -------- mode toggle -----------------------------------------------------
 
@@ -156,7 +167,6 @@ function App() {
       setLiveStamps([])
       setNextIndex(0)
       setSessionId((s) => s + 1)
-      // Refresh devices when switching mode as well
       refreshDevices()
     } catch (err) {
       console.error("switchMode error", err)
@@ -196,7 +206,8 @@ function App() {
     }
   }
 
-  const connectedCount = devices.length
+  const freshDevices = devices.filter(isFreshDevice)
+  const connectedCount = freshDevices.length
 
   // --------------------------------------------------------------------------
 
@@ -336,11 +347,11 @@ function App() {
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="card">
             <h2 className="text-sm font-semibold mb-3">Devices</h2>
-            {devices.length === 0 ? (
+            {freshDevices.length === 0 ? (
               <p className="text-xs text-gray-400">No devices detected yet.</p>
             ) : (
               <div className="space-y-2">
-                {devices.slice(0, targetDevices).map((d, idx) => (
+                {freshDevices.slice(0, targetDevices).map((d, idx) => (
                   <div
                     key={d.id}
                     className="rounded-xl bg-[#020617] border border-[color:var(--line-color)]/60 px-4 py-3 flex items-center justify-between"
