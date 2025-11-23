@@ -24,6 +24,17 @@ function formatTime(d: Date) {
   return d.toLocaleTimeString("en-GB", { hour12: false })
 }
 
+// Safely format whatever the backend sends as a date/time
+function formatMaybeTime(raw: any): string {
+  if (!raw) return "-"
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) {
+    // If it’s not a real Date, just show the raw string
+    return String(raw)
+  }
+  return formatTime(d)
+}
+
 function App() {
   const [mode, setMode] = useState<SystemMode>("centralized")
   const [devices, setDevices] = useState<DeviceInfo[]>([])
@@ -61,6 +72,8 @@ function App() {
 
   useEffect(() => {
     const ws = connectEventStream((newEvents) => {
+      // Log once so you can see the actual shape in the browser console
+      console.debug("[WS] batch:", newEvents)
       setEvents((prev) => [...newEvents, ...prev].slice(0, 50))
     })
     return () => ws.close()
@@ -70,7 +83,10 @@ function App() {
 
   useEffect(() => {
     fetchRuns()
-      .then(setSavedRuns)
+      .then((runs) => {
+        console.debug("[API] runs:", runs)
+        setSavedRuns(runs)
+      })
       .catch((err) => console.error("fetchRuns error", err))
   }, [])
 
@@ -277,7 +293,7 @@ function App() {
                     setLiveStamps([])
                     setNextIndex(0)
                   }}
-                  className="px-3 py-1 rounded-md border border-[color:var(--line-color)] text-[11px] hover:bg:white/5 hover:bg-white/5"
+                  className="px-3 py-1 rounded-md border border-[color:var(--line-color)] text-[11px] hover:bg-white/5"
                 >
                   New session
                 </button>
@@ -324,8 +340,7 @@ function App() {
                         {idx + 1}. {d.id}
                       </div>
                       <div className="text-[11px] text-gray-400">
-                        {d.ip ?? "no-ip"} • RSSI{" "}
-                        {d.rssi ?? d.signal ?? "-"} dBm
+                        {d.ip ?? "no-ip"} • RSSI {d.rssi ?? d.signal ?? "-"} dBm
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -375,7 +390,7 @@ function App() {
             ) : (
               <div className="border border-[color:var(--line-color)]/60 rounded-xl overflow-hidden">
                 <table className="w-full text-xs">
-                  <thead className="bg:white/5 bg-white/5 text-gray-400">
+                  <thead className="bg-white/5 text-gray-400">
                     <tr>
                       <th className="px-3 py-1 text-left w-10">#</th>
                       <th className="px-3 py-1 text-left">Time</th>
@@ -421,28 +436,43 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {savedRuns.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="border-t border-[color:var(--line-color)]/40"
-                      >
-                        <td className="px-3 py-1 font-mono text-[11px]">
-                          {formatTime(new Date(r.created_at))}
-                        </td>
-                        <td className="px-3 py-1 text-[11px]">{r.runner}</td>
-                        <td className="px-3 py-1 text-[11px]">{r.mode}</td>
-                        <td className="px-3 py-1 text-[11px]">
-                          {r.cone1_id
-                            ? `${r.cone1_id} @ ${formatTime(new Date(r.cone1_ts!))}`
-                            : "-"}
-                        </td>
-                        <td className="px-3 py-1 text-[11px]">
-                          {r.cone2_id
-                            ? `${r.cone2_id} @ ${formatTime(new Date(r.cone2_ts!))}`
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))}
+                    {savedRuns.map((r: any) => {
+                      // Be flexible with backend keys
+                      const created =
+                        r.created_at ?? r.created ?? r.time ?? r.timestamp ?? null
+                      const mode = r.mode ?? r.system_mode ?? r.architecture ?? "-"
+                      const cone1Id = r.cone1_id ?? r.cone_1_id ?? r.first_cone_id
+                      const cone1Ts =
+                        r.cone1_ts ?? r.cone_1_ts ?? r.first_cone_ts ?? null
+                      const cone2Id = r.cone2_id ?? r.cone_2_id ?? r.second_cone_id
+                      const cone2Ts =
+                        r.cone2_ts ?? r.cone_2_ts ?? r.second_cone_ts ?? null
+
+                      return (
+                        <tr
+                          key={r.id}
+                          className="border-t border-[color:var(--line-color)]/40"
+                        >
+                          <td className="px-3 py-1 font-mono text-[11px]">
+                            {formatMaybeTime(created)}
+                          </td>
+                          <td className="px-3 py-1 text-[11px]">
+                            {r.runner ?? r.runner_name ?? "-"}
+                          </td>
+                          <td className="px-3 py-1 text-[11px]">{mode}</td>
+                          <td className="px-3 py-1 text-[11px]">
+                            {cone1Id
+                              ? `${cone1Id} @ ${formatMaybeTime(cone1Ts)}`
+                              : "-"}
+                          </td>
+                          <td className="px-3 py-1 text-[11px]">
+                            {cone2Id
+                              ? `${cone2Id} @ ${formatMaybeTime(cone2Ts)}`
+                              : "-"}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -458,20 +488,31 @@ function App() {
               <p className="text-xs text-gray-400">No events yet.</p>
             ) : (
               <div className="max-h-64 overflow-auto pr-1 space-y-1 text-[11px]">
-                {events.map((e, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-md bg-[#020617] border border-[color:var(--line-color)]/40 px-2 py-1"
-                  >
-                    <span className="font-mono text-gray-500 mr-2">
-                      {e.ts?.slice(11, 19) ?? ""}
-                    </span>
-                    {e.device && (
-                      <span className="text-gray-300 mr-2">{e.device}</span>
-                    )}
-                    <span className="text-gray-400">{e.message}</span>
-                  </div>
-                ))}
+                {events.map((e: any, idx) => {
+                  const ts = e.ts ?? e.time ?? e.timestamp ?? ""
+                  const device = e.device ?? e.device_id ?? e.id ?? ""
+                  const message =
+                    e.message ??
+                    e.msg ??
+                    e.event ??
+                    e.text ??
+                    JSON.stringify(e)
+
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-md bg-[#020617] border border-[color:var(--line-color)]/40 px-2 py-1"
+                    >
+                      <span className="font-mono text-gray-500 mr-2">
+                        {ts ? ts.slice(11, 19) : ""}
+                      </span>
+                      {device && (
+                        <span className="text-gray-300 mr-2">{device}</span>
+                      )}
+                      <span className="text-gray-400">{message}</span>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </section>
