@@ -84,13 +84,7 @@ class _TcpHub:
          finally:
              conn.close()
 
-
     def stop_tcp(self):
-        self._running = False
-        print("[HUB] TCP stop requested")
-
-    # stubs for decentralized demo switch
-        def stop_tcp(self):
         self._running = False
         print("[HUB] TCP stop requested")
 
@@ -99,10 +93,13 @@ class _TcpHub:
         """
         Listen for UDP JSON heartbeats/broadcasts from cones.
 
-        Expected payload (matches your ESP32 script):
+        Expected payload:
         { "type": "heartbeat", "cone_id": "CONE_A", "rssi": -45 }
         """
-        # avoid starting twice
+        import socket, json
+        from datetime import datetime
+
+        # Avoid starting twice
         if getattr(self, "_udp_running", False):
             print("[HUB] UDP hub already running")
             return
@@ -113,7 +110,6 @@ class _TcpHub:
             print(f"[HUB] UDP listening :{port}")
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            # bind on all interfaces / given port
             sock.bind(("", port))
 
             while self._udp_running:
@@ -126,12 +122,12 @@ class _TcpHub:
                 try:
                     obj = json.loads(data.decode("utf-8"))
                 except Exception:
-                    continue  # ignore garbage
+                    continue
 
-                # update in-memory device list
+                # Update in-memory devices
                 _upsert_device(obj, ip_from)
 
-                # push a simple event into the feed for the WS/UI
+                # Push into WS event stream
                 EVENT_FEED.put({
                     "ts": datetime.utcnow().isoformat(),
                     "device": obj.get("cone_id") or obj.get("id") or ip_from,
@@ -147,12 +143,8 @@ class _TcpHub:
         t.start()
 
     def stop_udp(self):
-        """
-        Stop the UDP listener, if running.
-        """
+        """Stop the UDP listener, if running."""
         if getattr(self, "_udp_running", False):
             self._udp_running = False
             print("[HUB] UDP stop requested")
-
-
 HUB = _TcpHub()
