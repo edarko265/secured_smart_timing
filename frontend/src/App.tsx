@@ -32,7 +32,7 @@ function formatMaybeTime(raw: any): string {
   return formatTime(d)
 }
 
-// Decide if a device is still “fresh” based on last_seen
+// Decide if a device is still â€freshâ€ based on last_seen
 function isFreshDevice(d: DeviceInfo): boolean {
   if (d.last_seen == null) {
     // if backend doesn't send last_seen, don't hide it
@@ -131,7 +131,7 @@ function App() {
     [devices, targetDevices]
   )
 
-  // keyboard handler: 1–9 or Space
+  // keyboard handler: 1â€9 or Space
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.repeat) return
@@ -218,7 +218,7 @@ function App() {
           <div>
             <h1 className="text-2xl font-semibold">Secure Timing Ethos</h1>
             <p className="text-xs text-gray-400">
-              ESP32 training cones •{" "}
+              ESP32 training cones â€¢{" "}
               {mode === "centralized" ? "Centralized (TCP)" : "Decentralized (UDP/mesh)"}
             </p>
           </div>
@@ -284,7 +284,7 @@ function App() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-400">
-                Press keys <span className="font-mono">1…9</span> to stamp by cone index, or{" "}
+                Press keys <span className="font-mono">1â€¦9</span> to stamp by cone index, or{" "}
                 <span className="font-mono">Space</span> to stamp sequentially across connected
                 cones.
               </p>
@@ -361,7 +361,7 @@ function App() {
                         {idx + 1}. {d.id}
                       </div>
                       <div className="text-[11px] text-gray-400">
-                        {d.ip ?? "no-ip"} • RSSI {d.rssi ?? d.signal ?? "-"} dBm
+                        {d.ip ?? "no-ip"} â€¢ RSSI {d.rssi ?? d.signal ?? "-"} dBm
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -405,7 +405,7 @@ function App() {
 
             {liveStamps.length === 0 ? (
               <p className="text-xs text-gray-400">
-                No stamps yet. Press <span className="font-mono">1…9</span> or{" "}
+                No stamps yet. Press <span className="font-mono">1â€¦9</span> or{" "}
                 <span className="font-mono">Space</span> to record timestamps.
               </p>
             ) : (
