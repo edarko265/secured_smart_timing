@@ -1,9 +1,9 @@
 # app.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import HTMLResponse,  Response
 from fastapi.middleware.cors import CORSMiddleware
 from device_hub import HUB, EVENT_FEED, DEVICES
-from db import ensure_tables, save_run, list_runs
+from db import ensure_tables, save_run, list_runs, delete_run
 import json
 
 ensure_tables()
@@ -68,6 +68,17 @@ async def api_save_run(payload: dict):
 async def api_list_runs():
     return list_runs(limit=50)
 
+@app.delete("/api/runs/{run_id}", status_code=204)
+async def api_delete_run(run_id: int):
+    """
+    Delete a saved run by ID.
+    """
+    ok = delete_run(run_id)
+    if not ok:
+        # No such run
+        raise HTTPException(status_code=404, detail="Run not found")
+    # 204 No Content on success
+    return Response(status_code=204)
 
 # -------------------------- websocket events ---------------------------------
 

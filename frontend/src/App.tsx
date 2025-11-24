@@ -9,6 +9,7 @@ import {
   fetchRuns,
   RunSummary,
   RunStampPayload,
+  deleteRun,          // 🔹 NEW
 } from "./api"
 import "./styles.css"
 
@@ -32,7 +33,7 @@ function formatMaybeTime(raw: any): string {
   return formatTime(d)
 }
 
-// Decide if a device is still â€freshâ€ based on last_seen
+// Decide if a device is still “fresh” based on last_seen
 function isFreshDevice(d: DeviceInfo): boolean {
   if (d.last_seen == null) {
     // if backend doesn't send last_seen, don't hide it
@@ -131,7 +132,39 @@ function App() {
     [devices, targetDevices]
   )
 
-  // keyboard handler: 1â€9 or Space
+  // -------- edit/delete handlers for live stamps ----------------------------
+
+  const handleDeleteStamp = (index: number) => {
+    setLiveStamps((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleEditStamp = (index: number) => {
+    setLiveStamps((prev) =>
+      prev.map((s, i) => {
+        if (i !== index) return s
+        const newLabel = window.prompt("Edit device label", s.deviceLabel)
+        if (!newLabel) return s
+        return { ...s, deviceLabel: newLabel }
+      })
+    )
+  }
+
+  // -------- NEW: delete a saved run ----------------------------------------
+
+  const handleDeleteRun = async (id: number) => {
+    const ok = window.confirm("Delete this saved run permanently?")
+    if (!ok) return
+
+    try {
+      await deleteRun(id)
+      setSavedRuns((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      console.error("deleteRun error", err)
+      alert("Failed to delete run. See console for details.")
+    }
+  }
+
+  // keyboard handler: 1–9 or Space
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.repeat) return
@@ -218,7 +251,7 @@ function App() {
           <div>
             <h1 className="text-2xl font-semibold">Secure Timing Ethos</h1>
             <p className="text-xs text-gray-400">
-              ESP32 training cones â€¢{" "}
+              ESP32 training cones •{" "}
               {mode === "centralized" ? "Centralized (TCP)" : "Decentralized (UDP/mesh)"}
             </p>
           </div>
@@ -284,7 +317,7 @@ function App() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-400">
-                Press keys <span className="font-mono">1â€¦9</span> to stamp by cone index, or{" "}
+                Press keys <span className="font-mono">1…9</span> to stamp by cone index, or{" "}
                 <span className="font-mono">Space</span> to stamp sequentially across connected
                 cones.
               </p>
@@ -361,7 +394,7 @@ function App() {
                         {idx + 1}. {d.id}
                       </div>
                       <div className="text-[11px] text-gray-400">
-                        {d.ip ?? "no-ip"} â€¢ RSSI {d.rssi ?? d.signal ?? "-"} dBm
+                        {d.ip ?? "no-ip"} • RSSI {d.rssi ?? d.signal ?? "-"} dBm
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -405,7 +438,7 @@ function App() {
 
             {liveStamps.length === 0 ? (
               <p className="text-xs text-gray-400">
-                No stamps yet. Press <span className="font-mono">1â€¦9</span> or{" "}
+                No stamps yet. Press <span className="font-mono">1…9</span> or{" "}
                 <span className="font-mono">Space</span> to record timestamps.
               </p>
             ) : (
@@ -416,6 +449,7 @@ function App() {
                       <th className="px-3 py-1 text-left w-10">#</th>
                       <th className="px-3 py-1 text-left">Time</th>
                       <th className="px-3 py-1 text-left">Device</th>
+                      <th className="px-3 py-1 text-left w-24">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -429,6 +463,22 @@ function App() {
                           {formatTime(new Date(s.tsIso))}
                         </td>
                         <td className="px-3 py-1 text-[11px]">{s.deviceLabel}</td>
+                        <td className="px-3 py-1 text-[11px]">
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEditStamp(idx)}
+                              className="px-2 py-0.5 rounded-md border border-[color:var(--line-color)] text-[10px] hover:bg-white/5"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStamp(idx)}
+                              className="px-2 py-0.5 rounded-md text-[10px] bg-red-600 hover:bg-red-500 text-white"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -454,6 +504,7 @@ function App() {
                       <th className="px-3 py-1 text-left">Mode</th>
                       <th className="px-3 py-1 text-left">Cone 1</th>
                       <th className="px-3 py-1 text-left">Cone 2</th>
+                      <th className="px-3 py-1 text-left w-20">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -489,6 +540,14 @@ function App() {
                             {cone2Id
                               ? `${cone2Id} @ ${formatMaybeTime(cone2Ts)}`
                               : "-"}
+                          </td>
+                          <td className="px-3 py-1 text-[11px]">
+                            <button
+                              onClick={() => handleDeleteRun(r.id)}
+                              className="px-2 py-0.5 rounded-md text-[10px] bg-red-700 hover:bg-red-600 text-white"
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       )

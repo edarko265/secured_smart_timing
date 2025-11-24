@@ -117,6 +117,15 @@ def save_run(runner: str, mode: str, stamps: List[Dict[str, Any]]) -> int:
     conn.commit()
     return int(cur.lastrowid)
 
+def delete_run(run_id: int) -> bool:
+    """
+    Delete a run by ID. Returns True if a row was deleted, False otherwise.
+    """
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+    conn.commit()
+    return cur.rowcount > 0
+
 
 def list_runs(limit: int = 50) -> List[Dict[str, Any]]:
     conn = get_conn()

@@ -149,9 +149,6 @@ export async function listTimestamps(session_id: number) {
 
 // ---------------------------------------------------------
 //  Runs API — used by Saved Runs in App.tsx
-//  NOTE: expects backend routes:
-//    GET  /api/runs
-//    POST /api/runs
 // ---------------------------------------------------------
 
 export async function fetchRuns(): Promise<RunSummary[]> {
@@ -172,6 +169,14 @@ export async function saveRun(payload: {
   })
   if (!r.ok) throw new Error(`POST /api/runs ${r.status}`)
   return (await r.json()) as RunSummary
+}
+
+// 🔹 NEW: delete a saved run
+export async function deleteRun(id: number): Promise<void> {
+  const r = await fetch(`${API_BASE}/api/runs/${id}`, {
+    method: "DELETE",
+  })
+  if (!r.ok) throw new Error(`DELETE /api/runs/${id} ${r.status}`)
 }
 
 // ---------------------------------------------------------
