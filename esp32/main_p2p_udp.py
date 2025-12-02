@@ -13,7 +13,7 @@ import time
 import json
 
 SSID = "DNA-WIFI-7C58"      # CHANGE if needed
-PASS = "85801732190"        # CHANGE if needed
+PASS = "8Wifi password"        # CHANGE if needed
 CONE_ID = "ESP32-01"        # UNIQUE per cone (ESP32-01, ESP32-02, ...)
 PORT = 9090                 # Must match backend HUB.start_udp if Pi listens too
 
