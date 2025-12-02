@@ -68,6 +68,68 @@ def ensure_tables() -> None:
 
 # --- small helpers used by device_hub / app ---------------------------------
 
+# --- helpers used by TLS / DTLS servers -------------------------------------
+
+def save_heartbeat(
+    cone_id: str,
+    ip: str,
+    rssi: int,
+    mode: str,
+    ts_iso: str | None = None,
+) -> None:
+    """
+    Upsert a device row and log a heartbeat event.
+
+    Called from tls_server.py:
+      save_heartbeat(obj["cone_id"], ip, int(obj.get("rssi",-65)), "centralized", now)
+    """
+    if ts_iso is None:
+        ts_iso = datetime.utcnow().isoformat(timespec="milliseconds")
+
+    ensure_tables()
+    conn = get_conn()
+    cur = conn.execute("SELECT id FROM devices WHERE cone_id = ?", (cone_id,))
+    row = cur.fetchone()
+
+    if row:
+        conn.execute(
+            "UPDATE devices SET ip = ?, last_seen = ?, mode = ? WHERE id = ?",
+            (ip, ts_iso, mode, row["id"]),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO devices (cone_id, ip, last_seen, mode) VALUES (?,?,?,?)",
+            (cone_id, ip, ts_iso, mode),
+        )
+
+    # Optional: also log into the events table for audit / graphs
+    conn.execute(
+        "INSERT INTO events (ts, level, device, message) VALUES (?,?,?,?)",
+        (ts_iso, "info", cone_id, f"heartbeat rssi={rssi} mode={mode}"),
+    )
+
+    conn.commit()
+
+
+def save_event(
+    ts_iso: str,
+    device: str,
+    level: str,
+    message: str,
+) -> None:
+    """
+    Generic event logger.
+
+    Called from tls_server.py:
+      save_event(now, obj["cone_id"], "info", f"Key:{...}")
+    """
+    ensure_tables()
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO events (ts, level, device, message) VALUES (?,?,?,?)",
+        (ts_iso, level, device, message),
+    )
+    conn.commit()
 
 def log_event(level: str, device: str, message: str) -> None:
     conn = get_conn()

@@ -1,6 +1,8 @@
 import ssl, socket, threading, json
 from datetime import datetime
-from db import save_heartbeat, save_event
+from db import save_heartbeat, save_event, ensure_tables
+
+ensure_tables()
 
 context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 context.load_cert_chain("certs/cert.pem","certs/key.pem")
