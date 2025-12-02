@@ -1,5 +1,5 @@
 Smart Timing System — Centralised, Decentralised & Secure IoT Performance Platform
-
+Don't panic, I will fix the README. 
 🧩 Overview
 
 The Smart Timing System is a hybrid IoT timing and cybersecurity analysis platform built for athlete sprint cones, enabling fast and secure timestamp logging across centralised, decentralised, and encrypted architectures.
